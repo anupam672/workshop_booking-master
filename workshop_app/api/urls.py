@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
     RegisterView, ActivateAccountView, LoginView, LogoutView, RefreshTokenView,
-    ProfileView, ProfileUpdateView, UserProfileDetailView,
+    ProfileView, ProfileUpdateView, UserProfileDetailView, ChangePasswordView,
     WorkshopTypeViewSet, WorkshopViewSet,
     StatisticsPublicView, StatisticsTeamView
 )
@@ -23,6 +23,7 @@ urlpatterns = [
     # Profile endpoints
     path('profile/me/', ProfileView.as_view(), name='profile'),
     path('profile/me/update/', ProfileUpdateView.as_view(), name='profile_update'),
+    path('profile/change-password/', ChangePasswordView.as_view(), name='change_password'),
     path('profile/<int:user_id>/', UserProfileDetailView.as_view(), name='user_profile'),
 
     # Statistics endpoints

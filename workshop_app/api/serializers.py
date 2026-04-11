@@ -69,6 +69,13 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['id', 'first_name', 'last_name', 'email', 'username', 'profile']
 
 
+class UserSimpleSerializer(serializers.ModelSerializer):
+    """Simple serializer for user (name and email only)"""
+    class Meta:
+        model = User
+        fields = ['id', 'first_name', 'last_name', 'email', 'username']
+
+
 class ProfileUpdateSerializer(serializers.ModelSerializer):
     """Serializer for updating user profile"""
     class Meta:
@@ -182,6 +189,18 @@ class WorkshopChangeDateSerializer(serializers.Serializer):
 class WorkshopAcceptSerializer(serializers.Serializer):
     """Serializer for accepting workshop"""
     pass
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """Serializer for changing password"""
+    old_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, min_length=8)
+    new_password_confirm = serializers.CharField(write_only=True, min_length=8)
+
+    def validate(self, data):
+        if data['new_password'] != data['new_password_confirm']:
+            raise serializers.ValidationError({'new_password': "Passwords do not match."})
+        return data
 
 
 class StatisticsSerializer(serializers.Serializer):
