@@ -23,6 +23,7 @@ from django.conf import settings
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^$', views.index),
+    url(r'^api/', include('workshop_app.api.urls')),
     url(r'^workshop/', include('workshop_app.urls')),
     url(r'^reset/', include('django.contrib.auth.urls')),
     url(r'^page/', include('cms.urls')),
