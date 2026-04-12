@@ -1,8 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
-import { Toaster } from 'react-hot-toast'
-import { useAuthStore } from '@/store/authStore'
+import useAuthStore from '@/store/authStore'
 import ErrorBoundary from '@/components/ui/ErrorBoundary'
 
 // Lazy load all pages
@@ -61,7 +60,7 @@ function ProtectedRoute({ children }) {
  * Redirects to dashboard if already authenticated
  */
 function PublicOnlyRoute({ children }) {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const { isAuthenticated } = useAuthStore()
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />
@@ -205,31 +204,6 @@ export default function App() {
           </Routes>
         </AnimatePresence>
       </Suspense>
-
-      {/* Toast Notifications */}
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 3000,
-          style: {
-            borderRadius: '12px',
-            padding: '12px 16px',
-            fontSize: '14px',
-          },
-          success: {
-            iconTheme: {
-              primary: '#16A34A',
-              secondary: '#fff',
-            },
-          },
-          error: {
-            iconTheme: {
-              primary: '#DC2626',
-              secondary: '#fff',
-            },
-          },
-        }}
-      />
     </ErrorBoundary>
   )
 }

@@ -1,73 +1,89 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import toast from 'react-hot-toast';
-import useAuthStore from '../store/authStore';
-import { loginUser, registerUser, logoutUser } from '../api/auth';
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
+import useAuthStore from '../store/authStore'
+import { loginUser, registerUser, logoutUser } from '../api/auth'
 
 export default function useAuth() {
-  const navigate = useNavigate();
-  const { user, refreshToken, setAuth, clearAuth } = useAuthStore();
-  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate()
+  const { user, isAuthenticated, setAuth, clearAuth } = useAuthStore()
+  const [isLoginLoading, setIsLoginLoading] = useState(false)
+  const [isRegisterLoading, setIsRegisterLoading] = useState(false)
+  const [isLogoutLoading, setIsLogoutLoading] = useState(false)
 
-  const isAuthenticated = !!user;
-  const isInstructor = user?.is_instructor === true;
+  // Derived state
+  const isInstructor = user?.is_instructor === true
+  const fullName = user ? `${user.first_name} ${user.last_name}`.trim() : ''
 
   const login = async ({ username, password }) => {
+    setIsLoginLoading(true)
     try {
-      setIsLoading(true);
-      const data = await loginUser({ username, password });
-
-      setAuth(data.access, data.refresh, data.user);
-      toast.success('Welcome back!');
-      navigate('/dashboard');
-
-      return { isLoading: false };
+      const data = await loginUser({ username, password })
+      setAuth({
+        user: data.user,
+        accessToken: data.access,
+        refreshToken: data.refresh,
+      })
+      toast.success(`Welcome back, ${data.user.first_name}!`)
+      navigate('/dashboard')
     } catch (err) {
-      const errorMessage = err.response?.data?.error || 'Login failed';
-      toast.error(errorMessage);
-      setIsLoading(false);
-      throw err;
+      const message =
+        err.response?.data?.error ||
+        err.response?.data?.detail ||
+        'Login failed. Please check your credentials.'
+      toast.error(message)
+      throw err
+    } finally {
+      setIsLoginLoading(false)
     }
-  };
+  }
 
   const register = async (formData) => {
+    setIsRegisterLoading(true)
     try {
-      setIsLoading(true);
-      await registerUser(formData);
-
-      toast.success('Registration successful. Check your email!');
-      navigate('/activate');
-
-      return { isLoading: false };
+      await registerUser(formData)
+      toast.success('Registration successful! Check your email.')
+      navigate('/activate')
     } catch (err) {
-      const errorMessage = err.response?.data?.error || 'Registration failed';
-      toast.error(errorMessage);
-      setIsLoading(false);
-      throw err;
+      const message =
+        err.response?.data?.error ||
+        err.response?.data?.username?.[0] ||
+        err.response?.data?.email?.[0] ||
+        'Registration failed. Please try again.'
+      toast.error(message)
+      throw err
+    } finally {
+      setIsRegisterLoading(false)
     }
-  };
+  }
 
   const logout = async () => {
+    setIsLogoutLoading(true)
     try {
+      const { refreshToken } = useAuthStore.getState()
       if (refreshToken) {
-        await logoutUser({ refresh: refreshToken });
+        await logoutUser({ refresh: refreshToken })
       }
     } catch (err) {
-      // Continue logout even if API call fails
+      // Silent — still log out locally even if API fails
     } finally {
-      clearAuth();
-      navigate('/login');
-      toast.success('Logged out successfully');
+      clearAuth()
+      navigate('/login')
+      toast.success('Logged out successfully')
+      setIsLogoutLoading(false)
     }
-  };
+  }
 
   return {
     user,
     isAuthenticated,
     isInstructor,
-    isLoading,
+    fullName,
     login,
     register,
     logout,
-  };
+    isLoginLoading,
+    isRegisterLoading,
+    isLogoutLoading,
+  }
 }

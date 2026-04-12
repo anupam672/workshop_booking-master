@@ -14,6 +14,7 @@ const queryClient = new QueryClient({
       retry: 1,
       staleTime: 5 * 60 * 1000,
       refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
     },
   },
 })
@@ -21,20 +22,32 @@ const queryClient = new QueryClient({
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <BrowserRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
         <App />
         <Toaster
           position="top-right"
           toastOptions={{
-            duration: 4000,
+            duration: 3000,
             style: {
-              background: '#363636',
-              color: '#fff',
+              borderRadius: '12px',
+              padding: '12px 16px',
+              fontFamily: 'DM Sans, sans-serif',
+            },
+            success: {
+              iconTheme: { primary: '#16A34A', secondary: '#fff' },
+            },
+            error: {
+              iconTheme: { primary: '#DC2626', secondary: '#fff' },
             },
           }}
         />
       </BrowserRouter>
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
-  </React.StrictMode>,
+  </React.StrictMode>
 )

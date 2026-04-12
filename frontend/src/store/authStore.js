@@ -6,7 +6,7 @@ import { persist, createJSONStorage } from 'zustand/middleware'
  * Manages authentication state including user info, tokens, and auth status
  * Persists to localStorage
  */
-export const useAuthStore = create(
+const useAuthStore = create(
   persist(
     (set) => ({
       // State
@@ -49,3 +49,7 @@ export const useAuthStore = create(
     }
   )
 )
+
+// Export as both default and named export
+export default useAuthStore
+export { useAuthStore }

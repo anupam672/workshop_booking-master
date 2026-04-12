@@ -1,20 +1,37 @@
 import axios from 'axios'
-import { useAuthStore } from '@/store/authStore'
+import useAuthStore from '../store/authStore'
 
 /**
  * Create axios instance with base URL pointing to Django backend
  */
-const client = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
+const apiClient = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   headers: {
     'Content-Type': 'application/json',
   },
 })
 
 /**
+ * Token refresh queue management
+ */
+let isRefreshing = false
+let failedQueue = []
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error)
+    } else {
+      prom.resolve(token)
+    }
+  })
+  failedQueue = []
+}
+
+/**
  * Request interceptor - Add JWT token to Authorization header
  */
-client.interceptors.request.use(
+apiClient.interceptors.request.use(
   (config) => {
     const { accessToken } = useAuthStore.getState()
     if (accessToken) {
@@ -28,47 +45,64 @@ client.interceptors.request.use(
 /**
  * Response interceptor - Handle 401 by refreshing token
  */
-client.interceptors.response.use(
+apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config
 
     // If 401 and we haven't already retried this request
     if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject })
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`
+            return apiClient(originalRequest)
+          })
+          .catch((err) => {
+            return Promise.reject(err)
+          })
+      }
 
-      const { refreshToken, setAuth, clearAuth } = useAuthStore.getState()
+      originalRequest._retry = true
+      isRefreshing = true
+
+      const { refreshToken, user } = useAuthStore.getState()
 
       if (!refreshToken) {
-        clearAuth()
+        useAuthStore.getState().clearAuth()
         window.location.href = '/login'
         return Promise.reject(error)
       }
 
       try {
-        const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+        const baseURL = import.meta.env.VITE_API_URL || '/api'
         const response = await axios.post(`${baseURL}/auth/token/refresh/`, {
           refresh: refreshToken,
         })
 
-        const { access } = response.data
+        const { access, refresh } = response.data
 
         // Update store with new access token
-        const currentState = useAuthStore.getState()
-        setAuth({
-          user: currentState.user,
+        useAuthStore.getState().setAuth({
+          user,
           accessToken: access,
-          refreshToken,
+          refreshToken: refresh || refreshToken,
         })
 
         // Retry original request with new token
         originalRequest.headers.Authorization = `Bearer ${access}`
-        return client(originalRequest)
+        processQueue(null, access)
+        return apiClient(originalRequest)
       } catch (refreshError) {
         // Token refresh failed, logout user
-        clearAuth()
+        processQueue(refreshError, null)
+        useAuthStore.getState().clearAuth()
         window.location.href = '/login'
         return Promise.reject(refreshError)
+      } finally {
+        isRefreshing = false
       }
     }
 
@@ -76,5 +110,5 @@ client.interceptors.response.use(
   }
 )
 
-export default client
+export default apiClient
 
