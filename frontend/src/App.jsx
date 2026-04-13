@@ -57,16 +57,40 @@ function ProtectedRoute({ children }) {
 
 /**
  * Public-only Route wrapper
- * Redirects to dashboard if already authenticated
+ * Redirects to dashboard/activate only if fully authenticated
+ * Allows access to login/register if not authenticated OR if email not verified
  */
 function PublicOnlyRoute({ children }) {
-  const { isAuthenticated } = useAuthStore()
+  const { isAuthenticated, user } = useAuthStore()
 
-  if (isAuthenticated) {
+  // Only block if fully authenticated (has verified email)
+  if (isAuthenticated && user?.is_email_verified) {
     return <Navigate to="/dashboard" replace />
   }
 
+  // Otherwise allow access (not authenticated, or not verified)
   return children
+}
+
+/**
+ * Root redirect component
+ * Smart redirect based on auth state and email verification
+ */
+function RootRedirect() {
+  const { isAuthenticated, user } = useAuthStore()
+  
+  // Not authenticated → go to login
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+  
+  // Authenticated but email not verified → show activation waiting screen
+  if (user && !user.is_email_verified) {
+    return <Navigate to="/activate" replace />
+  }
+  
+  // Fully authenticated → go to dashboard
+  return <Navigate to="/dashboard" replace />
 }
 
 /**
@@ -80,7 +104,14 @@ export default function App() {
       <Suspense fallback={<PageLoader />}>
         <AnimatePresence mode="wait">
           <Routes location={location} key={location.pathname}>
-            {/* Public Routes */}
+            {/* Root redirect */}
+            <Route path="/" element={<RootRedirect />} />
+
+            {/* Auth Routes (Public, not wrapped in PublicOnlyRoute) */}
+            <Route path="/activate" element={<ActivationPage />} />
+            <Route path="/activate/:key" element={<ActivationPage />} />
+
+            {/* Public Routes (wrapped in PublicOnlyRoute) */}
             <Route
               path="/login"
               element={
@@ -97,7 +128,6 @@ export default function App() {
                 </PublicOnlyRoute>
               }
             />
-            <Route path="/activate/:key" element={<ActivationPage />} />
             <Route
               path="/forgot-password"
               element={
@@ -198,8 +228,7 @@ export default function App() {
               }
             />
 
-            {/* Catch-all and redirects */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            {/* Catch-all for 404 */}
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </AnimatePresence>

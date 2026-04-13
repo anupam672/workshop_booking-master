@@ -1,4 +1,4 @@
-Django==3.2.20
+Django==4.2.11
 coverage
 pyaml
 django-recurrence

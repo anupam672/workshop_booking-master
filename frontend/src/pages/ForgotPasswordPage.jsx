@@ -6,7 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { FormField } from '../components/forms/FormField';
+import FormField from '../components/forms/FormField'
 import { requestPasswordReset } from '../api/auth';
 
 const resetSchema = z.object({

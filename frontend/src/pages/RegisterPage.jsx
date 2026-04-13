@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, Check } from 'lucide-react';
-import { FormField } from '../components/forms/FormField';
+import FormField from '../components/forms/FormField'
 import useAuth from '../hooks/useAuth';
 
 // Zod Schemas for each step
@@ -28,7 +28,7 @@ const step1Schema = z.object({
 });
 
 const step2Schema = z.object({
-  title: z.string().min(1, 'Title is required'),
+  title: z.string().optional().default(''),  // blank=True on backend
   first_name: z
     .string()
     .min(2, 'First name must be at least 2 characters')
@@ -45,10 +45,10 @@ const step2Schema = z.object({
 const step3Schema = z.object({
   institute: z.string().min(5, 'Institute name must be at least 5 characters'),
   department: z.string().min(1, 'Department is required'),
-  location: z.string().min(1, 'Location is required'),
+  location: z.string().optional().default(''),  // blank=True on backend
   state: z.string().min(1, 'State is required'),
   position: z.string().min(1, 'Position is required'),
-  how_did_you_hear_about_us: z.string().min(1, 'This field is required'),
+  how_did_you_hear_about_us: z.string().optional().default(''),  // blank=True on backend
 });
 
 // Departments from Django model
@@ -209,10 +209,31 @@ export default function RegisterPage() {
     const isValid = await form3.trigger();
     if (!isValid) return;
 
+    const step1Data = stepData.step1 || {};
+    const step2Data = stepData.step2 || {};
+    const step3Data = form3.getValues();
+
+    // Restructure data to match API expectations
     const formData = {
-      ...stepData.step1,
-      ...stepData.step2,
-      ...form3.getValues(),
+      // User account fields
+      username: step1Data.username,
+      email: step1Data.email,
+      password: step1Data.password,
+      password2: step1Data.confirm_password,  // API expects password2, not confirm_password
+      // User personal fields
+      first_name: step2Data.first_name,
+      last_name: step2Data.last_name,
+      // Nested profile object
+      profile: {
+        title: step2Data.title,
+        phone_number: step2Data.phone_number,
+        institute: step3Data.institute,
+        department: step3Data.department,
+        location: step3Data.location,
+        state: step3Data.state,
+        position: step3Data.position,
+        how_did_you_hear_about_us: step3Data.how_did_you_hear_about_us,
+      }
     };
 
     try {
@@ -259,41 +280,45 @@ export default function RegisterPage() {
                 exit="exit"
                 className="space-y-4"
               >
-                <FormField label="Username" error={form1.formState.errors.username?.message} required>
-                  <input
-                    type="text"
-                    placeholder="Username"
-                    {...form1.register('username')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  />
-                </FormField>
+                <FormField
+                  label="Username"
+                  name="username"
+                  type="text"
+                  placeholder="Username"
+                  register={form1.register}
+                  error={form1.formState.errors.username}
+                  required
+                />
 
-                <FormField label="Email" error={form1.formState.errors.email?.message} required>
-                  <input
-                    type="email"
-                    placeholder="Email address"
-                    {...form1.register('email')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  />
-                </FormField>
+                <FormField
+                  label="Email"
+                  name="email"
+                  type="email"
+                  placeholder="Email address"
+                  register={form1.register}
+                  error={form1.formState.errors.email}
+                  required
+                />
 
-                <FormField label="Password" error={form1.formState.errors.password?.message} required>
-                  <input
-                    type="password"
-                    placeholder="Password"
-                    {...form1.register('password')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  />
-                </FormField>
+                <FormField
+                  label="Password"
+                  name="password"
+                  type="password"
+                  placeholder="Password"
+                  register={form1.register}
+                  error={form1.formState.errors.password}
+                  required
+                />
 
-                <FormField label="Confirm Password" error={form1.formState.errors.confirm_password?.message} required>
-                  <input
-                    type="password"
-                    placeholder="Confirm password"
-                    {...form1.register('confirm_password')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  />
-                </FormField>
+                <FormField
+                  label="Confirm Password"
+                  name="confirm_password"
+                  type="password"
+                  placeholder="Confirm password"
+                  register={form1.register}
+                  error={form1.formState.errors.confirm_password}
+                  required
+                />
               </motion.form>
             )}
 
@@ -306,46 +331,45 @@ export default function RegisterPage() {
                 exit="exit"
                 className="space-y-4"
               >
-                <FormField label="Title" error={form2.formState.errors.title?.message} required>
-                  <select
-                    {...form2.register('title')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  >
-                    <option value="">Select title</option>
-                    {TITLES.map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </FormField>
+                <FormField
+                  label="Title"
+                  name="title"
+                  type="select"
+                  register={form2.register}
+                  error={form2.formState.errors.title}
+                  required
+                  options={TITLES.map(([value, label]) => ({ value, label }))}
+                />
 
-                <FormField label="First Name" error={form2.formState.errors.first_name?.message} required>
-                  <input
-                    type="text"
-                    placeholder="First name"
-                    {...form2.register('first_name')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  />
-                </FormField>
+                <FormField
+                  label="First Name"
+                  name="first_name"
+                  type="text"
+                  placeholder="First name"
+                  register={form2.register}
+                  error={form2.formState.errors.first_name}
+                  required
+                />
 
-                <FormField label="Last Name" error={form2.formState.errors.last_name?.message} required>
-                  <input
-                    type="text"
-                    placeholder="Last name"
-                    {...form2.register('last_name')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  />
-                </FormField>
+                <FormField
+                  label="Last Name"
+                  name="last_name"
+                  type="text"
+                  placeholder="Last name"
+                  register={form2.register}
+                  error={form2.formState.errors.last_name}
+                  required
+                />
 
-                <FormField label="Phone Number" error={form2.formState.errors.phone_number?.message} required>
-                  <input
-                    type="tel"
-                    placeholder="10 digit phone number"
-                    {...form2.register('phone_number')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  />
-                </FormField>
+                <FormField
+                  label="Phone Number"
+                  name="phone_number"
+                  type="tel"
+                  placeholder="10 digit phone number"
+                  register={form2.register}
+                  error={form2.formState.errors.phone_number}
+                  required
+                />
               </motion.form>
             )}
 
@@ -358,80 +382,68 @@ export default function RegisterPage() {
                 exit="exit"
                 className="space-y-4"
               >
-                <FormField label="Institute" error={form3.formState.errors.institute?.message} required>
-                  <input
-                    type="text"
-                    placeholder="Institute name"
-                    {...form3.register('institute')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  />
-                </FormField>
+                <FormField
+                  label="Institute"
+                  name="institute"
+                  type="text"
+                  placeholder="Institute name"
+                  register={form3.register}
+                  error={form3.formState.errors.institute}
+                  required
+                />
 
-                <FormField label="Department" error={form3.formState.errors.department?.message} required>
-                  <select
-                    {...form3.register('department')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  >
-                    <option value="">Select department</option>
-                    {DEPARTMENTS.map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </FormField>
+                <FormField
+                  label="Department"
+                  name="department"
+                  type="select"
+                  register={form3.register}
+                  error={form3.formState.errors.department}
+                  required
+                  options={DEPARTMENTS.map(([value, label]) => ({ value, label }))}
+                />
 
-                <FormField label="Location" error={form3.formState.errors.location?.message} required>
-                  <input
-                    type="text"
-                    placeholder="City/Location"
-                    {...form3.register('location')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  />
-                </FormField>
+                <FormField
+                  label="Location"
+                  name="location"
+                  type="text"
+                  placeholder="City/Location"
+                  register={form3.register}
+                  error={form3.formState.errors.location}
+                  required
+                />
 
-                <FormField label="State" error={form3.formState.errors.state?.message} required>
-                  <select
-                    {...form3.register('state')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  >
-                    <option value="">Select state</option>
-                    {STATES.map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </FormField>
+                <FormField
+                  label="State"
+                  name="state"
+                  type="select"
+                  register={form3.register}
+                  error={form3.formState.errors.state}
+                  required
+                  options={STATES.map(([value, label]) => ({ value, label }))}
+                />
 
-                <FormField label="Position" error={form3.formState.errors.position?.message} required>
-                  <select
-                    {...form3.register('position')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  >
-                    <option value="">Select position</option>
-                    <option value="coordinator">Coordinator</option>
-                    <option value="instructor">Instructor</option>
-                  </select>
-                </FormField>
+                <FormField
+                  label="Position"
+                  name="position"
+                  type="select"
+                  register={form3.register}
+                  error={form3.formState.errors.position}
+                  required
+                  options={[
+                    { value: 'coordinator', label: 'Coordinator' },
+                    { value: 'instructor', label: 'Instructor' }
+                  ]}
+                />
 
                 <FormField
                   label="How did you hear about us?"
-                  error={form3.formState.errors.how_did_you_hear_about_us?.message}
+                  name="how_did_you_hear_about_us"
+                  type="select"
+                  register={form3.register}
+                  error={form3.formState.errors.how_did_you_hear_about_us}
                   required
-                >
-                  <select
-                    {...form3.register('how_did_you_hear_about_us')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  >
-                    <option value="">Select option</option>
-                    {SOURCES.map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </FormField>
+                  options={SOURCES.map(([value, label]) => ({ value, label }))}
+                />
               </motion.form>
             )}
           </AnimatePresence>

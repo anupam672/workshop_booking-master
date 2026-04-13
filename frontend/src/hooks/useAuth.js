@@ -45,11 +45,51 @@ export default function useAuth() {
       toast.success('Registration successful! Check your email.')
       navigate('/activate')
     } catch (err) {
-      const message =
-        err.response?.data?.error ||
-        err.response?.data?.username?.[0] ||
-        err.response?.data?.email?.[0] ||
-        'Registration failed. Please try again.'
+      // Extract error message from various response structures
+      let message = 'Registration failed. Please try again.'
+      
+      if (err.response?.data) {
+        const data = err.response.data
+        
+        // Try direct error field
+        if (data.error) message = data.error
+        else if (data.detail) message = data.detail
+        
+        // Try specific field errors (user fields)
+        else if (data.username?.[0]) message = data.username[0]
+        else if (data.email?.[0]) message = data.email[0]
+        else if (data.password?.[0]) message = data.password[0]
+        else if (data.first_name?.[0]) message = data.first_name[0]
+        else if (data.last_name?.[0]) message = data.last_name[0]
+        
+        // Try nested profile field errors
+        else if (data.profile) {
+          if (typeof data.profile === 'string') {
+            message = data.profile
+          } else if (typeof data.profile === 'object') {
+            const profileErrors = data.profile
+            if (profileErrors.phone_number?.[0]) message = `Phone: ${profileErrors.phone_number[0]}`
+            else if (profileErrors.institute?.[0]) message = `Institute: ${profileErrors.institute[0]}`
+            else if (profileErrors.department?.[0]) message = `Department: ${profileErrors.department[0]}`
+            else if (profileErrors.title?.[0]) message = `Title: ${profileErrors.title[0]}`
+            else if (profileErrors.position?.[0]) message = `Position: ${profileErrors.position[0]}`
+            else if (profileErrors.how_did_you_hear_about_us?.[0]) message = `How did you hear about us: ${profileErrors.how_did_you_hear_about_us[0]}`
+            else if (profileErrors.location?.[0]) message = `Location: ${profileErrors.location[0]}`
+            else if (profileErrors.state?.[0]) message = `State: ${profileErrors.state[0]}`
+            else {
+              // Generic profile error
+              const firstKey = Object.keys(profileErrors)[0]
+              if (firstKey && profileErrors[firstKey]?.[0]) {
+                message = `${firstKey}: ${profileErrors[firstKey][0]}`
+              }
+            }
+          }
+        }
+        
+        // Log full error for debugging
+        console.error('Registration error details:', data)
+      }
+      
       toast.error(message)
       throw err
     } finally {

@@ -396,7 +396,7 @@ export default function WorkshopStatusPage() {
             <p className="text-gray-600 max-w-sm">
               {searchTerm
                 ? 'Try adjusting your search terms'
-                : 'You don't have any workshops yet'}
+                : "You don't have any workshops yet"}
             </p>
           </div>
         )}

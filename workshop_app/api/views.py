@@ -43,17 +43,19 @@ class RegisterView(APIView):
     def send_activation_email(self, user, activation_key):
         """Send activation email to user"""
         subject = 'Activate your FOSSEE Workshop Booking Account'
-        message = f"""
-        Hi {user.first_name},
+        # IMPORTANT: Point to React frontend, NOT Django API directly
+        activation_url = f"{settings.FRONTEND_URL}/activate/{activation_key}" if hasattr(settings, 'FRONTEND_URL') else f"http://localhost:5173/activate/{activation_key}"
+        
+        message = f"""Hi {user.first_name},
 
-        Click the link below to activate your account:
-        {settings.PRODUCTION_URL}/api/auth/activate/{activation_key}/
+Click the link below to activate your account:
+{activation_url}
 
-        This link will expire in 7 days.
+This link will expire in 7 days.
 
-        Best regards,
-        FOSSEE Team
-        """
+Best regards,
+FOSSEE Team"""
+        
         try:
             send_mail(
                 subject,
@@ -75,10 +77,21 @@ class ActivateAccountView(APIView):
 
     def get(self, request, activation_key):
         try:
+            # Debug: Print the key being looked up
+            print(f"[ACTIVATION] Attempting to activate with key: {activation_key}")
+            
             profile = Profile.objects.get(activation_key=activation_key)
+            print(f"[ACTIVATION] Found profile for user: {profile.user.username}")
 
             # Check if key is expired
-            if profile.key_expiry_time < timezone.now():
+            now = timezone.now()
+            expiry = profile.key_expiry_time
+            
+            print(f"[ACTIVATION] Current time: {now}")
+            print(f"[ACTIVATION] Expiry time: {expiry}")
+            
+            if expiry and expiry < now:
+                print(f"[ACTIVATION] Link expired!")
                 return Response({
                     'error': 'Activation link has expired.'
                 }, status=status.HTTP_400_BAD_REQUEST)
@@ -88,14 +101,28 @@ class ActivateAccountView(APIView):
             profile.activation_key = None
             profile.key_expiry_time = None
             profile.save()
+            
+            print(f"[ACTIVATION] User {profile.user.username} activated successfully!")
 
             return Response({
                 'message': 'Account activated successfully. You can now login.'
             }, status=status.HTTP_200_OK)
+            
         except Profile.DoesNotExist:
+            print(f"[ACTIVATION ERROR] Profile not found for key: {activation_key}")
+            # Check if any profile has this key (for debugging)
+            profiles_with_keys = Profile.objects.filter(activation_key__isnull=False).values_list('activation_key', flat=True)
+            print(f"[ACTIVATION DEBUG] Available keys in DB: {list(profiles_with_keys)[:5]}")  # Show first 5
+            
             return Response({
-                'error': 'Invalid activation link.'
+                'error': 'Invalid activation link. Profile not found.'
             }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            print(f"[ACTIVATION ERROR] Unexpected error: {str(e)}")
+            return Response({
+                'error': f'Error during activation: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 class LoginView(TokenObtainPairView):
