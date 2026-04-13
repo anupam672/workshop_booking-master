@@ -14,7 +14,7 @@ from .serializers import (
     UserRegistrationSerializer, UserSerializer, ProfileUpdateSerializer,
     WorkshopTypeSerializer, WorkshopListSerializer, WorkshopDetailSerializer,
     WorkshopCreateUpdateSerializer, WorkshopChangeDateSerializer, CommentSerializer,
-    WorkshopTypeSimpleSerializer, ChangePasswordSerializer
+    WorkshopTypeSimpleSerializer, ChangePasswordSerializer, ProfileSerializer
 )
 
 
@@ -51,7 +51,7 @@ class RegisterView(APIView):
 Click the link below to activate your account:
 {activation_url}
 
-This link will expire in 7 days.
+This link will expire in 24 hours.
 
 Best regards,
 FOSSEE Team"""
@@ -83,6 +83,11 @@ class ActivateAccountView(APIView):
             profile = Profile.objects.get(activation_key=activation_key)
             print(f"[ACTIVATION] Found profile for user: {profile.user.username}")
 
+            if profile.is_email_verified:
+                return Response({
+                    'message': 'Account is already activated. You can now login.'
+                }, status=status.HTTP_200_OK)
+
             # Check if key is expired
             now = timezone.now()
             expiry = profile.key_expiry_time
@@ -98,8 +103,6 @@ class ActivateAccountView(APIView):
 
             # Activate user
             profile.is_email_verified = True
-            profile.activation_key = None
-            profile.key_expiry_time = None
             profile.save()
             
             print(f"[ACTIVATION] User {profile.user.username} activated successfully!")
@@ -185,7 +188,7 @@ class ProfileView(APIView):
             profile = request.user.profile
             return Response({
                 'user': UserSerializer(request.user).data,
-                'profile': profile
+                'profile': ProfileSerializer(profile).data
             }, status=status.HTTP_200_OK)
         except Profile.DoesNotExist:
             return Response({

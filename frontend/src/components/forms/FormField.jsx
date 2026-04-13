@@ -27,6 +27,7 @@ export default function FormField({
   name,
   type = 'text',
   register,                   // React Hook Form register FUNCTION (optional)
+  rules,                      // React Hook Form validation rules (optional)
   error,                      // error object from formState.errors.fieldName
   placeholder,
   required = false,
@@ -43,7 +44,7 @@ export default function FormField({
   const inputType = type === 'password' ? (showPassword ? 'text' : 'password') : type
 
   // Get registration props - support both patterns
-  const registrationProps = register && name ? register(name) : {}
+  const registrationProps = register && name ? register(name, rules) : {}
   
   // If value and onChange provided directly (controlled), use them
   const controlledProps = value !== undefined || onChange 

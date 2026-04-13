@@ -94,7 +94,7 @@ export default function WorkshopDetailPage() {
     )
   }
 
-  const commentsList = comments?.results || []
+  const commentsList = Array.isArray(comments) ? comments : (comments?.results || [])
 
   return (
     <PageWrapper title="Workshop Details">
@@ -223,24 +223,20 @@ export default function WorkshopDetailPage() {
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-white text-xs font-bold`}
                     style={{
-                      backgroundColor: generateAvatarColor(
-                        `${comment.author_first_name} ${comment.author_last_name}`
-                      ),
+                      backgroundColor: generateAvatarColor(comment.author_name || 'Guest'),
                     }}
                   >
-                    {getInitials(
-                      `${comment.author_first_name} ${comment.author_last_name}`
-                    )}
+                    {getInitials(comment.author_name || 'Guest')}
                   </div>
 
                   {/* Comment Content */}
                   <div className="flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-medium text-gray-900">
-                        {comment.author_first_name} {comment.author_last_name}
+                        {comment.author_name || 'Guest'}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {formatDate(comment.created_at)}
+                        {formatDate(comment.created_date)}
                       </p>
                     </div>
                     <p className="text-sm text-gray-700 mt-1">
@@ -262,14 +258,15 @@ export default function WorkshopDetailPage() {
             <form onSubmit={handleSubmit(onCommentSubmit)} className="space-y-4">
               <FormField
                 label="Add a Comment"
-                {...register('comment', {
+                name="comment"
+                register={register}
+                rules={{
                   required: 'Comment is required',
                   minLength: {
                     value: 1,
-                    message:
-                      'Comment must be at least 1 character',
+                    message: 'Comment must be at least 1 character',
                   },
-                })}
+                }}
                 type="textarea"
                 rows={3}
                 placeholder="Share your thoughts..."

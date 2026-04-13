@@ -48,7 +48,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
         # Generate activation key
         activation_key = str(uuid.uuid4())
-        key_expiry = timezone.now() + timedelta(days=7)
+        key_expiry = timezone.now() + timedelta(hours=24)
 
         Profile.objects.create(
             user=user,
@@ -63,10 +63,17 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     """Serializer for user data"""
     profile = ProfileSerializer(read_only=True)
+    is_email_verified = serializers.BooleanField(source='profile.is_email_verified', read_only=True)
+    is_instructor = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'first_name', 'last_name', 'email', 'username', 'profile']
+        fields = ['id', 'first_name', 'last_name', 'email', 'username', 'profile', 'is_email_verified', 'is_instructor']
+
+    def get_is_instructor(self, obj):
+        if hasattr(obj, 'profile'):
+            return obj.profile.position == 'instructor'
+        return False
 
 
 class UserSimpleSerializer(serializers.ModelSerializer):
